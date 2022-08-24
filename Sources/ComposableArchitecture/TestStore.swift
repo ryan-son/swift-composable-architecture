@@ -506,6 +506,7 @@
     ///   sending the action.
     @MainActor
     @discardableResult
+    @_disfavoredOverload
     public func send(
       _ action: ScopedAction,
       _ updateExpectingResult: ((inout ScopedState) throws -> Void)? = nil,
@@ -587,6 +588,7 @@
     @available(tvOS, deprecated: 9999.0, message: "Call the async-friendly 'send' instead.")
     @available(watchOS, deprecated: 9999.0, message: "Call the async-friendly 'send' instead.")
     @discardableResult
+    @_disfavoredOverload
     public func send(
       _ action: ScopedAction,
       _ updateExpectingResult: ((inout ScopedState) throws -> Void)? = nil,
@@ -695,6 +697,7 @@
     @available(macOS, deprecated: 9999.0, message: "Call the async-friendly 'receive' instead.")
     @available(tvOS, deprecated: 9999.0, message: "Call the async-friendly 'receive' instead.")
     @available(watchOS, deprecated: 9999.0, message: "Call the async-friendly 'receive' instead.")
+    @_disfavoredOverload
     public func receive(
       _ expectedAction: Action,
       _ updateExpectingResult: ((inout ScopedState) throws -> Void)? = nil,
@@ -790,6 +793,7 @@
     ///     store after processing the given action. Do not provide a closure if no change is
     ///     expected.
     @MainActor
+    @_disfavoredOverload
     public func receive(
       _ expectedAction: Action,
       timeout nanoseconds: UInt64? = nil,
@@ -1030,18 +1034,25 @@
 
   extension TestStore {
     public func skipReceivedActions(strict: Bool = true) {
-      guard !strict || !self.receivedActions.isEmpty
-      else {
-        XCTestDynamicOverlay.XCTFail("There were no received actions to ignore.")
+      if strict && self.receivedActions.isEmpty {
+        XCTestDynamicOverlay.XCTFail("There were no received actions to skip.")
         return
       }
+      guard !self.receivedActions.isEmpty
+      else { return }
       XCTExpectFailure {
         XCTestDynamicOverlay.XCTFail("Here's all the received actions skipped: ...")  // TODO: describe actions being skipped
         self.receivedActions = []
       }
     }
 
-    public func skipInFlightEffects() {
+    public func skipInFlightEffects(strict: Bool = true) {
+      if strict && self.inFlightEffects.isEmpty {
+        XCTestDynamicOverlay.XCTFail("There were no in-flight effects to skip.")
+        return
+      }
+      guard !self.inFlightEffects.isEmpty
+      else { return }
       XCTExpectFailure {
         XCTestDynamicOverlay.XCTFail("Here's all the effects still in flight: ...")  // TODO: describe effects being skipped
         for effect in self.inFlightEffects {

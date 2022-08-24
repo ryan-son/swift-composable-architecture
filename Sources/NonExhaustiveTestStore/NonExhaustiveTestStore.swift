@@ -6,24 +6,23 @@ public class NonExhaustiveTestStore<State, ScopedState, Action, ScopedAction, En
 {
   deinit {
     self.skipReceivedActions(strict: false)
-    self.skipInFlightEffects()
+    self.skipInFlightEffects(strict: false)
   }
 }
 
 extension NonExhaustiveTestStore where ScopedState: Equatable {
+  @discardableResult
   public func send(
     _ action: ScopedAction,
     _ updateExpectingResult: ((inout ScopedState) throws -> Void)? = nil,
     file: StaticString = #file,
     line: UInt = #line
-  ) {
+  ) -> TestStoreTask {
+    self.skipReceivedActions(strict: false)
+    let task = XCTExpectFailure {
+      super.send(action, updateExpectingResult, file: file, line: line)
+    }
     do {
-      self.skipReceivedActions(strict: false)
-
-      _ = XCTExpectFailure {
-        super.send(action, updateExpectingResult, file: file, line: line)
-      }
-
       var updated = self.toScopedState(self.state)
       if let updateExpectingResult {
         try updateExpectingResult(&updated)
@@ -32,6 +31,7 @@ extension NonExhaustiveTestStore where ScopedState: Equatable {
     } catch {
       // TODO: XCTFail
     }
+    return task
   }
 }
 
@@ -53,19 +53,18 @@ extension NonExhaustiveTestStore where ScopedState: Equatable, Action: Equatable
         return
       }
 
-
       while
         let receivedAction = self.receivedActions.first,
         receivedAction.action != expectedAction
       {
         XCTExpectFailure(strict: false) {
+          XCTFail("Skipped receiving \(receivedAction.action)", file: file, line: line)
           super.receive(receivedAction.action, file: file, line: line)
         }
       }
 
-      XCTExpectFailure(strict: false) {
-        super.receive(self.receivedActions.first!.action, file: file, line: line)
-      }
+      super
+        .receive(self.receivedActions.first!.action, updateExpectingResult, file: file, line: line)
 
       var updated = self.toScopedState(self.state)
       if let updateExpectingResult {
