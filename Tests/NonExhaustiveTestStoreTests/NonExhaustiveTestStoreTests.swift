@@ -5,57 +5,114 @@ import XCTest
 class NonExhaustiveTestStoreTests: XCTestCase {
   func testNonExhaustiveSend() {
     let store = NonExhaustiveTestStore(
-      initialState: 0,
-      reducer: Reducer<Int, Void, Void> { _, _, _ in .none },
-      environment: ()
-    )
-  }
-
-  func testSend() {
-    let mainQueue = DispatchQueue.test
-    struct State: Equatable {
-      var count = 0
-      var ignored = ""
-    }
-    enum Action: Equatable { case incr, decr, response1, response2 }
-    let store = NonExhaustiveTestStore(
-      initialState: State(),
-      reducer: Reducer<State, Action, Void> { state, action, _ in
-        switch action {
-        case .incr:
-          state.count += 1
-          state.ignored += "!"
-          return .concatenate(
-            Effect(value: .response1)
-            .receive(on: mainQueue)
-            .eraseToEffect(),
-            Effect(value: .response2)
-              .receive(on: mainQueue)
-              .eraseToEffect()
-            )
-        case .decr:
-          state.count -= 1
-          state.ignored += "?"
-          return .none
-        case .response1:
-          state.count += 2
-          return .none
-        case .response2:
-          state.count += 4
-          return .none
-        }
-      },
+      initialState: CounterState(),
+      reducer: counterReducer,
       environment: ()
     )
 
-    store.send(.incr) {
+    store.send(.increment) {
       $0.count = 1
     }
-    mainQueue.advance()
-    mainQueue.advance()
-
-    store.receive(.response2) {
-      $0.count = 7
+    store.send(.decrement) {
+      $0.count = 0
     }
+    store.send(.increment) {
+      $0.isEven = false
+    }
+    store.send(.decrement) {
+      $0.isEven = true
+    }
+    store.send(.increment) {
+      $0.count = 1
+      $0.isEven = false
+    }
+  }
+
+  func testMultipleSendsWithAssertionOnLast() {
+    let store = NonExhaustiveTestStore(
+      initialState: CounterState(),
+      reducer: counterReducer,
+      environment: ()
+    )
+
+    store.send(.increment)
+    store.send(.increment)
+    store.send(.increment) {
+      $0.count = 3
+    }
+  }
+
+  func testNonExhaustiveReceive() {
+    struct State: Equatable {
+      var int = 0
+      var string = ""
+    }
+    enum Action: Equatable {
+      case onAppear
+      case response1(Int)
+      case response2(String)
+    }
+    let featureReducer = Reducer<State, Action, Void> { state, action, _ in
+      switch action {
+      case .onAppear:
+        state = State()
+        return .merge(
+          .init(value: .response1(42)),
+          .init(value: .response2("Hello"))
+        )
+      case let .response1(int):
+        state.int = int
+        return .none
+      case let .response2(string):
+        state.string = string
+        return .none
+      }
+    }
+
+    let store = NonExhaustiveTestStore(
+      initialState: State(),
+      reducer: featureReducer,
+      environment: ()
+    )
+
+    store.send(.onAppear)
+    store.receive(.response2("Hello")) {
+      $0.string = "Hello"
+    }
+
+    store.send(.onAppear)
+    store.receive(.response1(42)) {
+      $0.int = 42
+    }
+
+    store.send(.onAppear)
+    store.receive(/Action.response2) {
+      $0.int = 42
+    }
+
+    XCTExpectFailure {
+      store.receive(.response1(1))
+    }
+  }
+}
+
+struct CounterState: Equatable {
+  var count = 0
+  var isEven = true
+}
+enum CounterAction {
+  case increment
+  case decrement
+}
+let counterReducer = Reducer<CounterState, CounterAction, Void> { state, action, _ in
+  switch action {
+  case .increment:
+    state.count += 1
+    state.isEven.toggle()
+    return .none
+  case .decrement:
+    state.count -= 1
+    state.isEven.toggle()
+    return .none
   }
 }
