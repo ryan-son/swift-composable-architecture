@@ -35,7 +35,7 @@ extension NonExhaustiveTestStore where ScopedState: Equatable {
         XCTAssertEqual(self.toScopedState(self.state), updated, file: file, line: line)
       }
     } catch {
-      // TODO: XCTFail
+      XCTFail("Threw error: \(error)", file: file, line: line)
     }
     return task
   }
@@ -78,7 +78,7 @@ extension NonExhaustiveTestStore where ScopedState: Equatable, Action: Equatable
         XCTAssertEqual(self.toScopedState(self.state), updated, file: file, line: line)
       }
     } catch {
-      // TODO: XCTFail
+      XCTFail("Threw error: \(error)", file: file, line: line)
     }
   }
 
@@ -96,14 +96,13 @@ extension NonExhaustiveTestStore where ScopedState: Equatable, Action: Equatable
 
     do {
       guard receivedActions.contains(where: { $0.action == expectedAction }) else {
-//        XCTExpectedFailure {
-          XCTFail(
+        XCTFail(
           """
           Expected to receive an action \(expectedAction), but didn't get one.
           """,
-          file: file, line: line
-          )
-//        }
+          file: file,
+          line: line
+        )
         return
       }
 
@@ -126,7 +125,7 @@ extension NonExhaustiveTestStore where ScopedState: Equatable, Action: Equatable
         XCTAssertEqual(self.toScopedState(self.state), updated, file: file, line: line)
       }
     } catch {
-      // TODO: XCTFail
+      XCTFail("Threw error: \(error)", file: file, line: line)
     }
   }
 }
