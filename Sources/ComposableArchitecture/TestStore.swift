@@ -4,6 +4,8 @@
   import Foundation
   import XCTestDynamicOverlay
 
+  import XCTest // TODO: port XCTExpectFailure to XCTestDynamicOverlay
+
   /// A testable runtime for a reducer.
   ///
   /// This object aids in writing expressive and exhaustive tests for features built in the
@@ -170,7 +172,7 @@
   /// wait longer than the 0.5 seconds, because if it wasn't and it delivered an action when we did
   /// not expect it would cause a test failure.
   ///
-  public final class TestStore<State, ScopedState, Action, ScopedAction, Environment> {
+  open class TestStore<State, ScopedState, Action, ScopedAction, Environment> {
     /// The current environment.
     ///
     /// The environment can be modified throughout a test store's lifecycle in order to influence
@@ -209,13 +211,13 @@
     public var timeout: UInt64
 
     private let file: StaticString
-    private let fromScopedAction: (ScopedAction) -> Action
+    public let fromScopedAction: (ScopedAction) -> Action
     private var line: UInt
     private var inFlightEffects: Set<LongLivingEffect> = []
-    var receivedActions: [(action: Action, state: State)] = []
-    private let reducer: Reducer<State, Action, Environment>
+    public internal(set) var receivedActions: [(action: Action, state: State)] = []
+    public let reducer: Reducer<State, Action, Environment>
     private var store: Store<State, TestAction>!
-    private let toScopedState: (State) -> ScopedState
+    public let toScopedState: (State) -> ScopedState
 
     private init(
       environment: Environment,
@@ -259,7 +261,7 @@
               receiveCancel: { [weak self] in self?.inFlightEffects.remove(effect) }
             )
             .eraseToEffect { .init(origin: .receive($0), file: action.file, line: action.line) }
-
+            .cancellable(id: effect.id)
         },
         environment: ()
       )
@@ -313,7 +315,7 @@
             If you are not yet using a scheduler, or can not use a scheduler, \(timeoutMessage).
             """
 
-          XCTFail(
+          XCTestDynamicOverlay.XCTFail(
             """
             Expected effects to finish, but there are still effects in-flight\
             \(nanoseconds > 0 ? " after \(Double(nanoseconds)/Double(NSEC_PER_SEC)) seconds" : "").
@@ -337,7 +339,7 @@
       if !self.receivedActions.isEmpty {
         var actions = ""
         customDump(self.receivedActions.map(\.action), to: &actions)
-        XCTFail(
+        XCTestDynamicOverlay.XCTFail(
           """
           The store received \(self.receivedActions.count) unexpected \
           action\(self.receivedActions.count == 1 ? "" : "s") after this one: …
@@ -348,7 +350,7 @@
         )
       }
       for effect in self.inFlightEffects {
-        XCTFail(
+        XCTestDynamicOverlay.XCTFail(
           """
           An effect returned for this action is still running. It must complete before the end of \
           the test. …
@@ -512,7 +514,7 @@
       if !self.receivedActions.isEmpty {
         var actions = ""
         customDump(self.receivedActions.map(\.action), to: &actions)
-        XCTFail(
+        XCTestDynamicOverlay.XCTFail(
           """
           Must handle \(self.receivedActions.count) received \
           action\(self.receivedActions.count == 1 ? "" : "s") before sending an action: …
@@ -539,7 +541,7 @@
           line: line
         )
       } catch {
-        XCTFail("Threw error: \(error)", file: file, line: line)
+        XCTestDynamicOverlay.XCTFail("Threw error: \(error)", file: file, line: line)
       }
       if "\(self.file)" == "\(file)" {
         self.line = line
@@ -593,7 +595,7 @@
       if !self.receivedActions.isEmpty {
         var actions = ""
         customDump(self.receivedActions.map(\.action), to: &actions)
-        XCTFail(
+        XCTestDynamicOverlay.XCTFail(
           """
           Must handle \(self.receivedActions.count) received \
           action\(self.receivedActions.count == 1 ? "" : "s") before sending an action: …
@@ -619,7 +621,7 @@
           line: line
         )
       } catch {
-        XCTFail("Threw error: \(error)", file: file, line: line)
+        XCTestDynamicOverlay.XCTFail("Threw error: \(error)", file: file, line: line)
       }
       if "\(self.file)" == "\(file)" {
         self.line = line
@@ -656,7 +658,7 @@
           modify != nil
           ? "A state change does not match expectation"
           : "State was not expected to change, but a change occurred"
-        XCTFail(
+        XCTestDynamicOverlay.XCTFail(
           """
           \(messageHeading): …
 
@@ -666,7 +668,7 @@
           line: line
         )
       } else if expected == current && modify != nil {
-        XCTFail(
+        XCTestDynamicOverlay.XCTFail(
           """
           Expected state to change, but no change occurred.
 
@@ -699,7 +701,7 @@
       line: UInt = #line
     ) {
       guard !self.receivedActions.isEmpty else {
-        XCTFail(
+        XCTestDynamicOverlay.XCTFail(
           """
           Expected to receive an action, but received none.
           """,
@@ -721,7 +723,7 @@
             """
         }
 
-        XCTFail(
+        XCTestDynamicOverlay.XCTFail(
           """
           Received unexpected action: …
 
@@ -740,7 +742,7 @@
           line: line
         )
       } catch {
-        XCTFail("Threw error: \(error)", file: file, line: line)
+        XCTestDynamicOverlay.XCTFail("Threw error: \(error)", file: file, line: line)
       }
       self.state = state
       if "\(self.file)" == "\(file)" {
@@ -833,7 +835,7 @@
               If you are not yet using a scheduler, or can not use a scheduler, \(timeoutMessage).
               """
           }
-          XCTFail(
+          XCTestDynamicOverlay.XCTFail(
             """
             Expected to receive an action, but received none\
             \(nanoseconds > 0 ? " after \(Double(nanoseconds)/Double(NSEC_PER_SEC)) seconds" : "").
@@ -984,7 +986,7 @@
           If you are not yet using a scheduler, or can not use a scheduler, \(timeoutMessage).
           """
 
-        XCTFail(
+        XCTestDynamicOverlay.XCTFail(
           """
           Expected task to finish, but it is still in-flight\
           \(nanoseconds > 0 ? " after \(Double(nanoseconds)/Double(NSEC_PER_SEC)) seconds" : "").
@@ -1023,4 +1025,28 @@
       }
     }
   #endif
+
+  extension TestStore {
+    public func skipReceivedActions(strict: Bool = true) {
+      guard !strict || !self.receivedActions.isEmpty
+      else {
+        XCTestDynamicOverlay.XCTFail("There were no received actions to ignore.")
+        return
+      }
+      XCTExpectFailure {
+        XCTestDynamicOverlay.XCTFail("Here's all the received actions skipped: ...")  // TODO: describe actions being skipped
+        self.receivedActions = []
+      }
+    }
+
+    public func skipInFlightEffects() {
+      XCTExpectFailure {
+        XCTestDynamicOverlay.XCTFail("Here's all the effects still in flight: ...")  // TODO: describe effects being skipped
+        for effect in self.inFlightEffects {
+          _ = Effect<Never, Never>.cancel(id: effect.id).sink { _ in }
+        }
+        self.inFlightEffects = []
+      }
+    }
+  }
 #endif
