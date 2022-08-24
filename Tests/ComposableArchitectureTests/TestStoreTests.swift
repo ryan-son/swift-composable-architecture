@@ -215,4 +215,28 @@ final class TestStoreTests: XCTestCase {
     }
     XCTAssertEqual(store.state, 4)
   }
+
+  public func testSkipReceivedActions() {
+    let store = TestStore(
+      initialState: 0,
+      reducer: Reducer<Int, Bool, Void> { _, action, _ in
+        action ? .init(value: false) : .none
+      },
+      environment: ()
+    )
+    store.send(true)
+    store.skipReceivedActions()
+  }
+
+  public func testSkipInFlightEffects() {
+    let store = TestStore(
+      initialState: 0,
+      reducer: Reducer<Int, Bool, Void> { _, action, _ in
+        Empty(completeImmediately: false).eraseToEffect()
+      },
+      environment: ()
+    )
+    store.send(true)
+    store.skipInFlightEffects()
+  }
 }

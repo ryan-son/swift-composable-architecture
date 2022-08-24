@@ -30,7 +30,7 @@ extension NonExhaustiveTestStore where ScopedState: Equatable {
     }
     do {
       var updated = self.toScopedState(self.state)
-      if let updateExpectingResult {
+      if let updateExpectingResult = updateExpectingResult {
         try updateExpectingResult(&updated)
         XCTAssertEqual(self.toScopedState(self.state), updated, file: file, line: line)
       }
@@ -73,7 +73,7 @@ extension NonExhaustiveTestStore where ScopedState: Equatable, Action: Equatable
         .receive(self.receivedActions.first!.action, updateExpectingResult, file: file, line: line)
 
       var updated = self.toScopedState(self.state)
-      if let updateExpectingResult {
+      if let updateExpectingResult = updateExpectingResult {
         try updateExpectingResult(&updated)
         XCTAssertEqual(self.toScopedState(self.state), updated, file: file, line: line)
       }
@@ -120,7 +120,7 @@ extension NonExhaustiveTestStore where ScopedState: Equatable, Action: Equatable
         .receive(self.receivedActions.first!.action, updateExpectingResult, file: file, line: line)
 
       var updated = self.toScopedState(self.state)
-      if let updateExpectingResult {
+      if let updateExpectingResult = updateExpectingResult {
         try updateExpectingResult(&updated)
         XCTAssertEqual(self.toScopedState(self.state), updated, file: file, line: line)
       }
