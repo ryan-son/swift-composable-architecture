@@ -1,32 +1,13 @@
 import ComposableArchitecture
 import XCTest
 
-public class NonExhaustiveTestStore<State, ScopedState, Action, ScopedAction, Environment>
-: TestStore<State, ScopedState, Action, ScopedAction, Environment> {
-
+public class NonExhaustiveTestStore<State, ScopedState, Action, ScopedAction, Environment>:
+  TestStore<State, ScopedState, Action, ScopedAction, Environment>
+{
   deinit {
     self.skipReceivedActions(strict: false)
     self.skipInFlightEffects()
   }
-}
-
-extension NonExhaustiveTestStore where State == ScopedState, Action == ScopedAction {
-  public convenience init(
-    initialState: State,
-    reducer: Reducer<State, Action, Environment>,
-    environment: Environment,
-    file: StaticString = #file,
-    line: UInt = #line
-  ) {
-    self.init(
-      initialState: initialState,
-      reducer: reducer,
-      environment: environment,
-      file: file,
-      line: line
-    )
-  }
-
 }
 
 extension NonExhaustiveTestStore where ScopedState: Equatable {

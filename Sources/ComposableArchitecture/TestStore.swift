@@ -208,7 +208,7 @@
     /// This is the default timeout used in all methods that take an optional timeout, such as
     /// ``send(_:_:file:line:)-7vwv9``, ``receive(_:timeout:_:file:line:)-88eyr`` and
     /// ``finish(timeout:file:line:)-53gi5``.
-    public var timeout: UInt64
+    public var timeout: UInt64 = 100 * NSEC_PER_SEC
 
     private let file: StaticString
     public let fromScopedAction: (ScopedAction) -> Action
@@ -219,52 +219,27 @@
     private var store: Store<State, TestAction>!
     public let toScopedState: (State) -> ScopedState
 
-    private init(
-      environment: Environment,
-      file: StaticString,
-      fromScopedAction: @escaping (ScopedAction) -> Action,
+    /// Initializes a test store from an initial state, a reducer, and an initial environment.
+    ///
+    /// - Parameters:
+    ///   - initialState: The state to start the test from.
+    ///   - reducer: A reducer.
+    ///   - environment: The environment to start the test from.
+    public init(
       initialState: State,
-      line: UInt,
       reducer: Reducer<State, Action, Environment>,
-      toScopedState: @escaping (State) -> ScopedState
-    ) {
+      environment: Environment,
+      file: StaticString = #file,
+      line: UInt = #line
+    ) where State == ScopedState, Action == ScopedAction {
       self.environment = environment
       self.file = file
-      self.fromScopedAction = fromScopedAction
+      self.fromScopedAction = { $0 }
       self.line = line
       self.reducer = reducer
       self.state = initialState
-      self.toScopedState = toScopedState
-      self.timeout = 100 * NSEC_PER_MSEC
-
-      self.store = Store(
-        initialState: initialState,
-        reducer: Reducer<State, TestAction, Void> { [unowned self] state, action, _ in
-          let effects: Effect<Action, Never>
-          switch action.origin {
-          case let .send(scopedAction):
-            effects = self.reducer.run(
-              &state, self.fromScopedAction(scopedAction), self.environment)
-            self.state = state
-
-          case let .receive(action):
-            effects = self.reducer.run(&state, action, self.environment)
-            self.receivedActions.append((action, state))
-          }
-
-          let effect = LongLivingEffect(file: action.file, line: action.line)
-          return
-            effects
-            .handleEvents(
-              receiveSubscription: { [weak self] _ in self?.inFlightEffects.insert(effect) },
-              receiveCompletion: { [weak self] _ in self?.inFlightEffects.remove(effect) },
-              receiveCancel: { [weak self] in self?.inFlightEffects.remove(effect) }
-            )
-            .eraseToEffect { .init(origin: .receive($0), file: action.file, line: action.line) }
-            .cancellable(id: effect.id)
-        },
-        environment: ()
-      )
+      self.toScopedState = { $0 }
+      self.configureStore()
     }
 
     #if swift(>=5.7)
@@ -378,6 +353,58 @@
       }
     }
 
+    private init(
+      environment: Environment,
+      file: StaticString,
+      fromScopedAction: @escaping (ScopedAction) -> Action,
+      initialState: State,
+      line: UInt,
+      reducer: Reducer<State, Action, Environment>,
+      timeout: UInt64,
+      toScopedState: @escaping (State) -> ScopedState
+    ) {
+      self.environment = environment
+      self.file = file
+      self.fromScopedAction = fromScopedAction
+      self.line = line
+      self.reducer = reducer
+      self.state = initialState
+      self.toScopedState = toScopedState
+      self.timeout = timeout
+      self.configureStore()
+    }
+
+    private func configureStore() {
+      self.store = Store(
+        initialState: self.state,
+        reducer: Reducer<State, TestAction, Void> { [unowned self] state, action, _ in
+          let effects: Effect<Action, Never>
+          switch action.origin {
+          case let .send(scopedAction):
+            effects = self.reducer.run(
+              &state, self.fromScopedAction(scopedAction), self.environment)
+            self.state = state
+
+          case let .receive(action):
+            effects = self.reducer.run(&state, action, self.environment)
+            self.receivedActions.append((action, state))
+          }
+
+          let effect = LongLivingEffect(file: action.file, line: action.line)
+          return
+            effects
+            .handleEvents(
+              receiveSubscription: { [weak self] _ in self?.inFlightEffects.insert(effect) },
+              receiveCompletion: { [weak self] _ in self?.inFlightEffects.remove(effect) },
+              receiveCancel: { [weak self] in self?.inFlightEffects.remove(effect) }
+            )
+            .eraseToEffect { .init(origin: .receive($0), file: action.file, line: action.line) }
+            .cancellable(id: effect.id)
+        },
+        environment: ()
+      )
+    }
+
     private struct LongLivingEffect: Hashable {
       let id = UUID()
       let file: StaticString
@@ -411,32 +438,6 @@
           return debugCaseOutput(action)
         }
       }
-    }
-  }
-
-  extension TestStore where State == ScopedState, Action == ScopedAction {
-    /// Initializes a test store from an initial state, a reducer, and an initial environment.
-    ///
-    /// - Parameters:
-    ///   - initialState: The state to start the test from.
-    ///   - reducer: A reducer.
-    ///   - environment: The environment to start the test from.
-    public convenience init(
-      initialState: State,
-      reducer: Reducer<State, Action, Environment>,
-      environment: Environment,
-      file: StaticString = #file,
-      line: UInt = #line
-    ) {
-      self.init(
-        environment: environment,
-        file: file,
-        fromScopedAction: { $0 },
-        initialState: initialState,
-        line: line,
-        reducer: reducer,
-        toScopedState: { $0 }
-      )
     }
   }
 
@@ -880,6 +881,7 @@
         initialState: self.store.state.value,
         line: self.line,
         reducer: self.reducer,
+        timeout: self.timeout,
         toScopedState: { toScopedState(self.toScopedState($0)) }
       )
     }
