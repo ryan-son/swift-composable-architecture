@@ -1039,7 +1039,8 @@
       guard !self.receivedActions.isEmpty
       else { return }
       _XCTExpectFailure {
-        XCTFail("TODO: Here's all the received actions skipped: ...")  // TODO: describe actions being skipped
+        // TODO: describe actions being skipped
+        XCTFail("TODO: Here's all the received actions skipped: ...")
         self.receivedActions = []
       }
     }
@@ -1052,7 +1053,8 @@
       guard !self.inFlightEffects.isEmpty
       else { return }
       _XCTExpectFailure {
-        XCTFail("TODO: Here's all the effects still in flight: ...")  // TODO: describe effects being skipped
+        // TODO: describe effects being skipped
+        XCTFail("TODO: Here's all the effects still in flight: ...")
         for effect in self.inFlightEffects {
           _ = Effect<Never, Never>.cancel(id: effect.id).sink { _ in }
         }
@@ -1065,7 +1067,7 @@
     _ failureReason: String? = nil,
     strict: Bool = true,
     failingBlock: () -> Void
-  ) -> Void {
+  ) {
     guard
       let XCTExpectedFailureOptions = NSClassFromString("XCTExpectedFailureOptions")
         as Any as? NSObjectProtocol,

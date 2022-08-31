@@ -49,18 +49,18 @@ extension NonExhaustiveTestStore where ScopedState: Equatable, Action: Equatable
     line: UInt = #line
   ) {
     do {
-      guard receivedActions.contains(where: { expectedAction.extract(from: $0.action) != nil }) else {
+      guard receivedActions.contains(where: { expectedAction.extract(from: $0.action) != nil })
+      else {
         XCTFail(
-        """
-        Expected to receive an action \(expectedAction), but didn't get one.
-        """,
-        file: file, line: line
+          """
+          Expected to receive an action \(expectedAction), but didn't get one.
+          """,
+          file: file, line: line
         )
         return
       }
 
-      while
-        let receivedAction = self.receivedActions.first,
+      while let receivedAction = self.receivedActions.first,
         expectedAction.extract(from: receivedAction.action) != nil
       {
         XCTExpectFailure(strict: false) {
@@ -106,8 +106,7 @@ extension NonExhaustiveTestStore where ScopedState: Equatable, Action: Equatable
         return
       }
 
-      while
-        let receivedAction = self.receivedActions.first,
+      while let receivedAction = self.receivedActions.first,
         receivedAction.action != expectedAction
       {
         XCTExpectFailure(strict: false) {
