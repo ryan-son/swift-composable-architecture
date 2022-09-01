@@ -311,7 +311,7 @@
     func completed() {
       if !self.receivedActions.isEmpty {
         var actions = ""
-        customDump(self.receivedActions.map(\.action), to: &actions)
+        customDump(self.receivedActions.map { $0.action }, to: &actions)
         XCTFail(
           """
           The store received \(self.receivedActions.count) unexpected \
@@ -345,8 +345,8 @@
           returning a corresponding cancellation effect ("Effect.cancel") from another action, or, \
           if your effect is driven by a Combine subject, send it a completion.
           """,
-          file: effect.file,
-          line: effect.line
+          file: effect.action.file,
+          line: effect.action.line
         )
       }
     }
@@ -388,7 +388,7 @@
             self.receivedActions.append((action, state))
           }
 
-          let effect = LongLivingEffect(file: action.file, line: action.line)
+          let effect = LongLivingEffect(action: action)
           return
             effects
             .handleEvents(
@@ -405,8 +405,7 @@
 
     private struct LongLivingEffect: Hashable {
       let id = UUID()
-      let file: StaticString
-      let line: UInt
+      let action: TestAction
 
       static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.id == rhs.id
@@ -417,7 +416,7 @@
       }
     }
 
-    private struct TestAction: CustomDebugStringConvertible {
+    private struct TestAction: CustomDebugStringConvertible, CustomDumpReflectable {
       let origin: Origin
       let file: StaticString
       let line: UInt
@@ -434,6 +433,16 @@
 
         case let .receive(action):
           return debugCaseOutput(action)
+        }
+      }
+
+      var customDumpMirror: Mirror {
+        switch self.origin {
+        case let .send(action):
+          return Mirror(reflecting: action)
+
+        case let .receive(action):
+          return Mirror(reflecting: action)
         }
       }
     }
@@ -507,18 +516,18 @@
     @_disfavoredOverload
     public func send(
       _ action: ScopedAction,
+      prefix: String = "",
       _ updateExpectingResult: ((inout ScopedState) throws -> Void)? = nil,
       file: StaticString = #file,
-      line: UInt = #line,
-      prefix: String? = nil
+      line: UInt = #line
     ) async -> TestStoreTask {
       if !self.receivedActions.isEmpty {
         var actions = ""
-        customDump(self.receivedActions.map(\.action), to: &actions)
+        customDump(self.receivedActions.map { $0.action }, to: &actions)
         XCTFail(
           """
-          \(prefix.map { $0 + "\n\n" } ?? "")Must handle \(self.receivedActions.count) received \
-          action\(self.receivedActions.count == 1 ? "" : "s") before sending an action: …
+          \(prefix.isEmpty ? "" : "\(prefix)\n\n")Must handle \(self.receivedActions.count)
+          received action\(self.receivedActions.count == 1 ? "" : "s") before sending an action: …
 
           Unhandled actions: \(actions)
           """,
@@ -537,13 +546,19 @@
         try self.expectedStateShouldMatch(
           expected: &expectedState,
           actual: self.toScopedState(currentState),
+          prefix: prefix,
           modify: updateExpectingResult,
           file: file,
-          line: line,
-          prefix: prefix
+          line: line
         )
       } catch {
-        XCTFail("Threw error: \(error)", file: file, line: line)
+        XCTFail(
+          """
+          \(prefix.isEmpty ? "" : "\(prefix)\n\n")Threw error: \(error)
+          """,
+          file: file,
+          line: line
+        )
       }
       if "\(self.file)" == "\(file)" {
         self.line = line
@@ -591,18 +606,18 @@
     @_disfavoredOverload
     public func send(
       _ action: ScopedAction,
+      prefix: String = "",
       _ updateExpectingResult: ((inout ScopedState) throws -> Void)? = nil,
       file: StaticString = #file,
-      line: UInt = #line,
-      prefix: String? = nil
+      line: UInt = #line
     ) -> TestStoreTask {
       if !self.receivedActions.isEmpty {
         var actions = ""
-        customDump(self.receivedActions.map(\.action), to: &actions)
+        customDump(self.receivedActions.map { $0.action }, to: &actions)
         XCTFail(
           """
-          Must handle \(self.receivedActions.count) received \
-          action\(self.receivedActions.count == 1 ? "" : "s") before sending an action: …
+          \(prefix.isEmpty ? "" : "\(prefix)\n\n")Must handle \(self.receivedActions.count) \
+          received action\(self.receivedActions.count == 1 ? "" : "s") before sending an action: …
 
           Unhandled actions: \(actions)
           """,
@@ -620,13 +635,19 @@
         try self.expectedStateShouldMatch(
           expected: &expectedState,
           actual: self.toScopedState(currentState),
+          prefix: prefix,
           modify: updateExpectingResult,
           file: file,
-          line: line,
-          prefix: prefix
+          line: line
         )
       } catch {
-        XCTFail("Threw error: \(error)", file: file, line: line)
+        XCTFail(
+          """
+          \(prefix.isEmpty ? "" : "\(prefix)\n\n")Threw error: \(error)
+          """,
+          file: file,
+          line: line
+        )
       }
       if "\(self.file)" == "\(file)" {
         self.line = line
@@ -638,10 +659,10 @@
     private func expectedStateShouldMatch(
       expected: inout ScopedState,
       actual: ScopedState,
+      prefix: String,
       modify: ((inout ScopedState) throws -> Void)? = nil,
       file: StaticString,
-      line: UInt,
-      prefix: String? = nil
+      line: UInt
     ) throws {
       let current = expected
       if let modify = modify {
@@ -666,7 +687,7 @@
           : "State was not expected to change, but a change occurred"
         XCTFail(
           """
-          \(prefix.map { $0 + "\n\n" } ?? "")\(messageHeading): …
+          \(prefix.isEmpty ? "" : "\(prefix)\n\n")\(messageHeading): …
 
           \(difference)
           """,
@@ -676,7 +697,7 @@
       } else if expected == current && modify != nil {
         XCTFail(
           """
-          \(prefix.map { $0 + "\n\n" } ?? "")Expected state to change, but no change occurred.
+          \(prefix.isEmpty ? "" : "\(prefix)\n\n")Expected state to change, but no change occurred.
 
           The trailing closure made no observable modifications to state. If no change to state is \
           expected, omit the trailing closure.
@@ -703,6 +724,7 @@
     @_disfavoredOverload
     public func receive(
       _ expectedAction: Action,
+      prefix: String = "",
       _ updateExpectingResult: ((inout ScopedState) throws -> Void)? = nil,
       file: StaticString = #file,
       line: UInt = #line
@@ -710,7 +732,7 @@
       guard !self.receivedActions.isEmpty else {
         XCTFail(
           """
-          Expected to receive an action, but received none.
+          \(prefix.isEmpty ? "" : "\(prefix)\n\n")Expected to receive an action, but received none.
           """,
           file: file, line: line
         )
@@ -732,7 +754,7 @@
 
         XCTFail(
           """
-          Received unexpected action: …
+          \(prefix.isEmpty ? "" : "\(prefix)\n\n")Received unexpected action: …
 
           \(difference)
           """,
@@ -744,12 +766,19 @@
         try expectedStateShouldMatch(
           expected: &expectedState,
           actual: self.toScopedState(state),
+          prefix: prefix,
           modify: updateExpectingResult,
           file: file,
           line: line
         )
       } catch {
-        XCTFail("Threw error: \(error)", file: file, line: line)
+        XCTFail(
+          """
+          \(prefix.isEmpty ? "" : "\(prefix)\n\n")Threw error: \(error)
+          """,
+          file: file,
+          line: line
+        )
       }
       self.state = state
       if "\(self.file)" == "\(file)" {
@@ -772,6 +801,7 @@
       public func receive(
         _ expectedAction: Action,
         timeout duration: Duration,
+        prefix: String = "",
         _ updateExpectingResult: ((inout ScopedState) throws -> Void)? = nil,
         file: StaticString = #file,
         line: UInt = #line
@@ -779,6 +809,7 @@
         await self.receive(
           expectedAction,
           timeout: duration.nanoseconds,
+          prefix: prefix,
           updateExpectingResult,
           file: file,
           line: line
@@ -800,6 +831,7 @@
     public func receive(
       _ expectedAction: Action,
       timeout nanoseconds: UInt64? = nil,
+      prefix: String = "",
       _ updateExpectingResult: ((inout ScopedState) throws -> Void)? = nil,
       file: StaticString = #file,
       line: UInt = #line
@@ -808,7 +840,10 @@
 
       guard !self.inFlightEffects.isEmpty
       else {
-        { self.receive(expectedAction, updateExpectingResult, file: file, line: line) }()
+        {
+          self.receive(
+            expectedAction, prefix: prefix, updateExpectingResult, file: file, line: line)
+        }()
         return
       }
 
@@ -860,7 +895,9 @@
       guard !Task.isCancelled
       else { return }
 
-      { self.receive(expectedAction, updateExpectingResult, file: file, line: line) }()
+      {
+        self.receive(expectedAction, prefix: prefix, updateExpectingResult, file: file, line: line)
+      }()
       await Task.megaYield()
     }
   }
@@ -1036,7 +1073,7 @@
   #endif
 
   extension TestStore {
-    public func skipReceivedActions(strict: Bool = true) {
+    public func skipReceivedActions(strict: Bool = true, prefix: String = "") {
       if strict && self.receivedActions.isEmpty {
         XCTFail("There were no received actions to skip.")
         return
@@ -1044,13 +1081,18 @@
       guard !self.receivedActions.isEmpty
       else { return }
       _XCTExpectFailure {
-        // TODO: describe actions being skipped
-        XCTFail("TODO: Here's all the received actions skipped: ...")
+        var actions = ""
+        customDump(self.receivedActions.map { $0.action }, to: &actions)
+        XCTFail(
+          """
+          \(prefix.isEmpty ? "" : "\(prefix)\n\n")Received actions were skipped: \(actions)
+          """
+        )
         self.receivedActions = []
       }
     }
 
-    public func skipInFlightEffects(strict: Bool = true) {
+    public func skipInFlightEffects(strict: Bool = true, prefix: String = "") {
       if strict && self.inFlightEffects.isEmpty {
         XCTFail("There were no in-flight effects to skip.")
         return
@@ -1058,8 +1100,14 @@
       guard !self.inFlightEffects.isEmpty
       else { return }
       _XCTExpectFailure {
-        // TODO: describe effects being skipped
-        XCTFail("TODO: Here's all the effects still in flight: ...")
+        var actions = ""
+        customDump(self.inFlightEffects.map { $0.action }, to: &actions)
+        XCTFail(
+          """
+          \(prefix.isEmpty ? "" : "\(prefix)\n\n")In-flight effects were skipped, originating \
+          from: \(actions)
+          """
+        )
         for effect in self.inFlightEffects {
           _ = Effect<Never, Never>.cancel(id: effect.id).sink { _ in }
         }
@@ -1068,7 +1116,8 @@
     }
   }
 
-  func _XCTExpectFailure( 
+  // TODO: Move to XCTest Dynamic Overlay
+  func _XCTExpectFailure(
     _ failureReason: String? = nil,
     strict: Bool = true,
     failingBlock: () -> Void

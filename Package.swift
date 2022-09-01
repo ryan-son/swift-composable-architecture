@@ -49,6 +49,8 @@ let package = Package(
       name: "NonExhaustiveTestStore",
       dependencies: [
         "ComposableArchitecture",
+        .product(name: "CustomDump", package: "swift-custom-dump"),
+        .product(name: "XCTestDynamicOverlay", package: "xctest-dynamic-overlay"),
       ]
     ),
     .testTarget(
