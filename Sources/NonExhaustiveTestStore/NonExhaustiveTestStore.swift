@@ -26,7 +26,7 @@ extension NonExhaustiveTestStore where ScopedState: Equatable {
 
     self.skipReceivedActions(strict: false)
     let task = XCTExpectFailure(strict: false) {
-      super.send(action, updateExpectingResult, file: file, line: line)
+      super.send(action, updateExpectingResult, file: file, line: line, prefix: "The following assertions were skipped.")
     }
     do {
       var updated = self.toScopedState(self.state)

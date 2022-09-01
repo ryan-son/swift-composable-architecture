@@ -509,14 +509,15 @@
       _ action: ScopedAction,
       _ updateExpectingResult: ((inout ScopedState) throws -> Void)? = nil,
       file: StaticString = #file,
-      line: UInt = #line
+      line: UInt = #line,
+      prefix: String? = nil
     ) async -> TestStoreTask {
       if !self.receivedActions.isEmpty {
         var actions = ""
         customDump(self.receivedActions.map(\.action), to: &actions)
         XCTFail(
           """
-          Must handle \(self.receivedActions.count) received \
+          \(prefix.map { $0 + "\n\n" } ?? "")Must handle \(self.receivedActions.count) received \
           action\(self.receivedActions.count == 1 ? "" : "s") before sending an action: …
 
           Unhandled actions: \(actions)
@@ -538,7 +539,8 @@
           actual: self.toScopedState(currentState),
           modify: updateExpectingResult,
           file: file,
-          line: line
+          line: line,
+          prefix: prefix
         )
       } catch {
         XCTFail("Threw error: \(error)", file: file, line: line)
@@ -591,7 +593,8 @@
       _ action: ScopedAction,
       _ updateExpectingResult: ((inout ScopedState) throws -> Void)? = nil,
       file: StaticString = #file,
-      line: UInt = #line
+      line: UInt = #line,
+      prefix: String? = nil
     ) -> TestStoreTask {
       if !self.receivedActions.isEmpty {
         var actions = ""
@@ -619,7 +622,8 @@
           actual: self.toScopedState(currentState),
           modify: updateExpectingResult,
           file: file,
-          line: line
+          line: line,
+          prefix: prefix
         )
       } catch {
         XCTFail("Threw error: \(error)", file: file, line: line)
@@ -636,7 +640,8 @@
       actual: ScopedState,
       modify: ((inout ScopedState) throws -> Void)? = nil,
       file: StaticString,
-      line: UInt
+      line: UInt,
+      prefix: String? = nil
     ) throws {
       let current = expected
       if let modify = modify {
@@ -661,7 +666,7 @@
           : "State was not expected to change, but a change occurred"
         XCTFail(
           """
-          \(messageHeading): …
+          \(prefix.map { $0 + "\n\n" } ?? "")\(messageHeading): …
 
           \(difference)
           """,
@@ -671,7 +676,7 @@
       } else if expected == current && modify != nil {
         XCTFail(
           """
-          Expected state to change, but no change occurred.
+          \(prefix.map { $0 + "\n\n" } ?? "")Expected state to change, but no change occurred.
 
           The trailing closure made no observable modifications to state. If no change to state is \
           expected, omit the trailing closure.
@@ -1063,7 +1068,7 @@
     }
   }
 
-  func _XCTExpectFailure(
+  func _XCTExpectFailure( 
     _ failureReason: String? = nil,
     strict: Bool = true,
     failingBlock: () -> Void

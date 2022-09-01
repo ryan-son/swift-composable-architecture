@@ -4,32 +4,15 @@ import XCTest
 
 class NonExhaustiveTestStoreTests: XCTestCase {
   func testNonExhaustiveSend() {
-
-
-
-
     let store = NonExhaustiveTestStore(
       initialState: CounterState(),
       reducer: counterReducer,
       environment: ()
     )
 
-    // Non-exhaustive assertion. The count is asserted on, but the
-    // isEven state is not.
     store.send(.increment) {
       $0.count = 1
     }
-
-
-
-
-
-
-
-
-
-
-
     store.send(.decrement) {
       $0.count = 0
     }
