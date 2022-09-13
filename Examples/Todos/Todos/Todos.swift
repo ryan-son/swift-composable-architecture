@@ -111,10 +111,10 @@ struct AppView: View {
     @BindableViewState var filter: Filter
     let isClearCompletedButtonDisabled: Bool
 
-    init(state: BindableStore<Todos.State>) {
-      self._editMode = state.$editMode
-      self._filter = state.$filter
-      self.isClearCompletedButtonDisabled = !state.todos.contains(where: \.isComplete)
+    init(store: BindableStore<Todos.State>) {
+      self._editMode = store.$editMode
+      self._filter = store.$filter
+      self.isClearCompletedButtonDisabled = !store.todos.contains(where: \.isComplete)
     }
   }
 
