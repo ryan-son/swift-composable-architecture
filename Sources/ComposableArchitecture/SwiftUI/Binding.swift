@@ -188,8 +188,17 @@ public struct BindableStore<State> {
     #endif
   }
 
+  public init(projectedValue: Self) {
+    self = projectedValue
+  }
+
   public var wrappedValue: State {
     self.store.state.value
+  }
+
+  public var projectedValue: Self {
+    get { self }
+    set { self = newValue }
   }
 
   public subscript<Value: Equatable>(
