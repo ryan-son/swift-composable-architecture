@@ -57,9 +57,6 @@ struct Animations: ReducerProtocol {
           await send(.setColor(color), animation: .linear)
           try await self.clock.sleep(for: .seconds(1))
         }
-      } catch: { e, s in
-        print(e)
-        print("---")
       }
       .cancellable(id: CancelID.self)
 

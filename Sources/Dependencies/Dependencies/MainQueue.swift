@@ -1,3 +1,5 @@
+// TODO: soft deprecate?
+
 #if canImport(Combine)
   import CombineSchedulers
   import Foundation

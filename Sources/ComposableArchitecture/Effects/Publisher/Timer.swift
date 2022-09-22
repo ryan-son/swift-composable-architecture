@@ -1,6 +1,8 @@
 import Combine
 import CombineSchedulers
 
+// TODO: soft deprecate
+
 extension Effect where Failure == Never {
   /// Returns an effect that repeatedly emits the current time of the given scheduler on the given
   /// interval.

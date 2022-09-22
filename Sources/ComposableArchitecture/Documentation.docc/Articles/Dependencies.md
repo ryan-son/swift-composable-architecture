@@ -156,8 +156,8 @@ struct Todos: ReducerProtocol {
   enum Action {
     // ...
   }
+  @Dependency(\.continuousClock) var clock
   @Dependency(\.date) var date
-  @Dependency(\.mainQueue) var mainQueue
   @Dependency(\.uuid) var uuid
 
   // ...
@@ -176,7 +176,7 @@ func testTodos() async {
   )
 
   store.dependencies.date = .constant(Date(timeIntervalSinceReferenceDate: 0))
-  store.dependencies.mainQueue = .immediate
+  store.dependencies.continuousClock = ImmediateClock()
   store.dependencies.uuid = .incrementing
 
   // ...

@@ -311,40 +311,36 @@ the future we need to test a feature that has a timer that emits hundreds or tho
 We cannot hold up our test suite for minutes or hours just to test that one feature.
 
 To fix this we need to add a dependency to the reducer that aids in performing time-based 
-asynchrony, but in a way that is controllable. One way to do this is to add a Combine scheduler as a
+asynchrony, but in a way that is controllable. One way to do this is to add a clock as a
 `@Dependency` to the reducer:
 
 ```swift
-import CombineSchedulers
+import Clocks
 
 struct Feature: ReducerProtocol {
   struct State { … }
   enum Action { … }
-  @Dependency(\.mainQueue) var mainQueue
+  @Dependency(\.continuousClock) var clock
 }
 ```
 
-> To make use of controllable schedulers you must use the
-[Combine Schedulers][gh-combine-schedulers] library, which is automatically included with the
-Composable Architecture.
+> To make use of controllable clocks you must use the [Clocks][gh-swift-clocks] library, which is 
+automatically included with the Composable Architecture.
 
-And then the timer effect in the reducer can make use of the scheduler to sleep rather than reaching
+And then the timer effect in the reducer can make use of the clock to sleep rather than reaching
 out to the uncontrollable `Task.sleep` method:
 
 ```swift
 return .run { send in
   for _ in 1...5 {
-    try await self.mainQueue.sleep(for: .seconds(1))
+    try await self.clock.sleep(for: .seconds(1))
     await send(.timerTick)
   }
 }
 ```
 
-> The `sleep(for:)` method on `Scheduler` is provided by the
-[Combine Schedulers][gh-combine-schedulers] library.
-
-By having a scheduler as a dependency in the feature we can supply a controlled value in tests, such 
-as an immediate scheduler that does not suspend at all when you ask it to sleep:
+By having a clock as a dependency in the feature we can supply a controlled version in tests, such 
+as an immediate clock that does not suspend at all when you ask it to sleep:
 
 ```swift
 let store = TestStore(
@@ -352,7 +348,7 @@ let store = TestStore(
   reducer: Feature()
 )
 
-store.dependencies.mainQueue = .immediate
+store.dependencies.clock = ImmediateClock()
 ```
 
 With that small change we can drop the `timeout` arguments from the
@@ -557,5 +553,6 @@ introduced.
 [Designing-dependencies]: #Designing-dependencies
 [Unimplemented-dependencies]: #Unimplemented-dependencies
 [gh-combine-schedulers]: http://github.com/pointfreeco/combine-schedulers
+[gh-swift-clocks]: http://github.com/pointfreeco/swift-clocks
 [gh-xctest-dynamic-overlay]: http://github.com/pointfreeco/xctest-dynamic-overlay
 [tca-examples]: https://github.com/pointfreeco/swift-composable-architecture/tree/main/Examples

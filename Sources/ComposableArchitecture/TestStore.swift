@@ -92,7 +92,7 @@
   /// to match the state after the action was sent. In this case the `count` field changes to `1`.
   ///
   /// For a more complex example, consider the following bare-bones search feature that uses a
-  /// scheduler and cancel token to debounce requests:
+  /// clock and cancel token to debounce requests:
   ///
   /// ```swift
   /// struct Search: ReducerProtocol {
@@ -107,7 +107,7 @@
   ///   }
   ///
   ///   @Dependency(\.apiClient) var apiClient
-  ///   @Dependency(\.mainQueue) var mainQueue
+  ///   @Dependency(\.continuousClock) var clock
   ///
   ///   func reduce(
   ///     into state: inout State, action: Action
@@ -118,7 +118,7 @@
   ///
   ///       state.query = query
   ///       return .run { send in
-  ///         try await self.mainQueue.sleep(for: 0.5)
+  ///         try await self.clock.sleep(for: .millseconds(500))
   ///
   ///         guard let results = try? await self.apiClient.search(query)
   ///         else { return }
@@ -135,8 +135,8 @@
   /// }
   /// ```
   ///
-  /// It can be fully tested by overriding the `mainQueue` and `apiClient` dependencies with values
-  /// that are fully controlled and deterministic:
+  /// It can be fully tested by overriding the `clock` and `apiClient` dependencies with values
+  /// that are controlled and deterministic:
   ///
   /// ```swift
   /// let store = TestStore(
@@ -144,12 +144,12 @@
   ///   reducer: Search
   /// )
   ///
-  /// // Create a test dispatch scheduler to control the timing of effects
-  /// let mainQueue = DispatchQueue.test
-  /// store.dependencies.mainQueue = mainQueue.eraseToAnyScheduler()
+  /// // Create a test clock to control the timing of effects
+  /// let clock = TestClock()
+  /// store.dependencies.continuousClock = clock
   ///
   /// // Simulate a search response with one item
-  /// store.dependencies.mainQueue.apiClient.search = { _ in
+  /// store.dependencies.apiClient.search = { _ in
   ///   ["Composable Architecture"]
   /// }
   ///
@@ -160,7 +160,7 @@
   /// }
   ///
   /// // Advance the queue by a period shorter than the debounce
-  /// await mainQueue.advance(by: 0.25)
+  /// await clock.advance(by: .milliseconds(250))
   ///
   /// // Change the query again
   /// await store.send(.searchFieldChanged("co") {
@@ -168,9 +168,9 @@
   /// }
   ///
   /// // Advance the queue by a period shorter than the debounce
-  /// await mainQueue.advance(by: 0.25)
-  /// // Advance the scheduler to the debounce
-  /// await scheduler.advance(by: 0.25)
+  /// await clock.advance(by: .milliseconds(250))
+  /// // Advance the clock to the debounce
+  /// await clock.advance(by: .milliseconds(250))
   ///
   /// // Assert that the expected response is received
   /// await store.receive(.response(["Composable Architecture"])) {
@@ -361,12 +361,12 @@
             : #"configure this assertion with an explicit "timeout""#
           let suggestion = """
             There are effects in-flight. If the effect that delivers this action uses a \
-            scheduler (via "receive(on:)", "delay", "debounce", etc.), make sure that you wait \
-            enough time for the scheduler to perform the effect. If you are using a test \
-            scheduler, advance the scheduler so that the effects may complete, or consider using \
-            an immediate scheduler to immediately perform the effect instead.
+            clock/scheduler (via "receive(on:)", "delay", "debounce", etc.), make sure that you \
+            wait enough time for the clock/scheduler to perform the effect. If you are using a \
+            test clock/scheduler, advance the clock/scheduler so that the effects may complete, or \
+            consider using an immediate clock/scheduler to immediately perform the effect instead.
 
-            If you are not yet using a scheduler, or can not use a scheduler, \(timeoutMessage).
+            If you are not yet using a clock/scheduler, or can not use a clock/scheduler, \(timeoutMessage).
             """
 
           XCTFail(
@@ -416,10 +416,11 @@
           • If using async/await in your effect, it may need a little bit of time to properly \
           finish. To fix you can simply perform "await store.finish()" at the end of your test.
 
-          • If an effect uses a scheduler (via "receive(on:)", "delay", "debounce", etc.), make \
-          sure that you wait enough time for the scheduler to perform the effect. If you are using \
-          a test scheduler, advance the scheduler so that the effects may complete, or consider \
-          using an immediate scheduler to immediately perform the effect instead.
+          • If an effect uses a clock/scheduler (via "receive(on:)", "delay", "debounce", etc.), \
+          make sure that you wait enough time for the clock/scheduler to perform the effect. If \
+          you are using a test clock/scheduler, advance the clock/scheduler so that the effects \
+          may complete, or consider using an immediate clock/scheduler to immediately perform the \
+          effect instead.
 
           • If you are returning a long-living effect (timers, notifications, subjects, etc.), \
           then make sure those effects are torn down by marking the effect ".cancellable" and \
@@ -826,12 +827,13 @@
               : #"configure this assertion with an explicit "timeout""#
             suggestion = """
               There are effects in-flight. If the effect that delivers this action uses a \
-              scheduler (via "receive(on:)", "delay", "debounce", etc.), make sure that you wait \
-              enough time for the scheduler to perform the effect. If you are using a test \
-              scheduler, advance the scheduler so that the effects may complete, or consider using \
-              an immediate scheduler to immediately perform the effect instead.
+              clock/scheduler (via "receive(on:)", "delay", "debounce", etc.), make sure that you \
+              wait enough time for the clock/scheduler to perform the effect. If you are using a \
+              test clock/scheduler, advance the clock/scheduler so that the effects may complete, \
+              or consider using an immediate clock/scheduler to immediately perform the effect \
+              instead.
 
-              If you are not yet using a scheduler, or can not use a scheduler, \(timeoutMessage).
+              If you are not yet using a clock/scheduler, or can not use a clock/scheduler, \(timeoutMessage).
               """
           }
           XCTFail(
@@ -916,7 +918,7 @@
   /// ```swift
   /// store.send(.startTimerButtonTapped)
   ///
-  /// await mainQueue.advance(by: .seconds(1))
+  /// await clock.advance(by: .seconds(1))
   /// await store.receive(.timerTick) { $0.elapsed = 1 }
   ///
   /// // Wait for cleanup effects to finish before completing the test
@@ -980,13 +982,13 @@
           ? #"try increasing the duration of this assertion's "timeout""#
           : #"configure this assertion with an explicit "timeout""#
         let suggestion = """
-          If this task delivers its action using a scheduler (via "sleep(for:)", \
-          "timer(interval:)", etc.), make sure that you wait enough time for the scheduler to \
-          perform its work. If you are using a test scheduler, advance the scheduler so that the \
-          effects may complete, or consider using an immediate scheduler to immediately perform \
-          the effect instead.
+          If this task delivers its action using a clock or scheduler (via "sleep(for:)", \
+          "timer(interval:)", etc.), make sure that you wait enough time for the clock/scheduler \
+          to perform its work. If you are using a test clock/scheduler, advance it so that \
+          the effects may complete, or consider using an immediate clock/scheduler to immediately \
+          perform the effect instead.
 
-          If you are not yet using a scheduler, or can not use a scheduler, \(timeoutMessage).
+          If you are not yet using a clock/scheduler, or can not use a clock/scheduler, \(timeoutMessage).
           """
 
         XCTFail(
