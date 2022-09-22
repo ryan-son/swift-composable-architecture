@@ -24,7 +24,7 @@ struct Timers: ReducerProtocol {
     case toggleTimerButtonTapped
   }
 
-  @Dependency(\.mainQueue) var mainQueue
+  @Dependency(\.continuousClock) var clock
   private enum TimerID {}
 
   func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
@@ -40,7 +40,7 @@ struct Timers: ReducerProtocol {
       state.isTimerActive.toggle()
       return .run { [isTimerActive = state.isTimerActive] send in
         guard isTimerActive else { return }
-        for await _ in self.mainQueue.timer(interval: 1) {
+        for await _ in self.clock.timer(interval: .seconds(1)) {
           await send(.timerTicked, animation: .interpolatingSpring(stiffness: 3000, damping: 40))
         }
       }

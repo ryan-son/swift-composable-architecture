@@ -33,7 +33,7 @@ struct LoadThenNavigateList: ReducerProtocol {
     case setNavigationSelectionDelayCompleted(UUID)
   }
 
-  @Dependency(\.mainQueue) var mainQueue
+  @Dependency(\.continuousClock) var clock
   private enum CancelID {}
 
   var body: some ReducerProtocol<State, Action> {
@@ -50,7 +50,7 @@ struct LoadThenNavigateList: ReducerProtocol {
           state.rows[id: row.id]?.isActivityIndicatorVisible = row.id == navigatedId
         }
         return .task {
-          try await self.mainQueue.sleep(for: 1)
+          try await self.clock.sleep(for: .seconds(1))
           return .setNavigationSelectionDelayCompleted(navigatedId)
         }
         .cancellable(id: CancelID.self, cancelInFlight: true)

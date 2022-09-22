@@ -37,7 +37,7 @@ struct Animations: ReducerProtocol {
     case tapped(CGPoint)
   }
 
-  @Dependency(\.mainQueue) var mainQueue
+  @Dependency(\.continuousClock) var clock
 
   func reduce(into state: inout State, action: Action) -> Effect<Action, Never> {
     enum CancelID {}
@@ -55,8 +55,11 @@ struct Animations: ReducerProtocol {
       return .run { send in
         for color in [Color.red, .blue, .green, .orange, .pink, .purple, .yellow, .black] {
           await send(.setColor(color), animation: .linear)
-          try await self.mainQueue.sleep(for: 1)
+          try await self.clock.sleep(for: .seconds(1))
         }
+      } catch: { e, s in
+        print(e)
+        print("---")
       }
       .cancellable(id: CancelID.self)
 

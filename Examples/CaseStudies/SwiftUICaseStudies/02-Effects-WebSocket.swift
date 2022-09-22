@@ -35,7 +35,7 @@ struct WebSocket: ReducerProtocol {
     case webSocket(WebSocketClient.Action)
   }
 
-  @Dependency(\.mainQueue) var mainQueue
+  @Dependency(\.continuousClock) var clock
   @Dependency(\.webSocket) var webSocket
   private enum WebSocketID {}
 
@@ -67,7 +67,7 @@ struct WebSocket: ReducerProtocol {
               case .didOpen:
                 group.addTask {
                   while !Task.isCancelled {
-                    try await self.mainQueue.sleep(for: .seconds(10))
+                    try await self.clock.sleep(for: .seconds(10))
                     try? await self.webSocket.sendPing(WebSocketID.self)
                   }
                 }

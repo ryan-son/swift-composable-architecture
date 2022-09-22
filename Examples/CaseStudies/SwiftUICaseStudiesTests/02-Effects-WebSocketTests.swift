@@ -15,7 +15,7 @@ final class WebSocketTests: XCTestCase {
     let actions = AsyncStream<WebSocketClient.Action>.streamWithContinuation()
     let messages = AsyncStream<TaskResult<WebSocketClient.Message>>.streamWithContinuation()
 
-    store.dependencies.mainQueue = .immediate
+    store.dependencies.continuousClock = ImmediateClock()
     store.dependencies.webSocket.open = { _, _, _ in actions.stream }
     store.dependencies.webSocket.receive = { _ in messages.stream }
     store.dependencies.webSocket.send = { _, _ in }
@@ -66,7 +66,7 @@ final class WebSocketTests: XCTestCase {
     let actions = AsyncStream<WebSocketClient.Action>.streamWithContinuation()
     let messages = AsyncStream<TaskResult<WebSocketClient.Message>>.streamWithContinuation()
 
-    store.dependencies.mainQueue = .immediate
+    store.dependencies.continuousClock = ImmediateClock()
     store.dependencies.webSocket.open = { _, _, _ in actions.stream }
     store.dependencies.webSocket.receive = { _ in messages.stream }
     store.dependencies.webSocket.send = { _, _ in
@@ -108,10 +108,10 @@ final class WebSocketTests: XCTestCase {
     )
 
     let actions = AsyncStream<WebSocketClient.Action>.streamWithContinuation()
-    let mainQueue = DispatchQueue.test
+    let clock = TestClock()
     let pingsCount = ActorIsolated(0)
 
-    store.dependencies.mainQueue = mainQueue.eraseToAnyScheduler()
+    store.dependencies.continuousClock = clock
     store.dependencies.webSocket.open = { _, _, _ in actions.stream }
     store.dependencies.webSocket.receive = { _ in try await Task.never() }
     store.dependencies.webSocket.sendPing = { _ in await pingsCount.withValue { $0 += 1 } }
@@ -127,7 +127,7 @@ final class WebSocketTests: XCTestCase {
 
     // Wait for ping
     await pingsCount.withValue { XCTAssertEqual($0, 0) }
-    await mainQueue.advance(by: .seconds(10))
+    await clock.advance(by: .seconds(10))
     await pingsCount.withValue { XCTAssertEqual($0, 1) }
 
     // Disconnect from the socket
@@ -144,7 +144,7 @@ final class WebSocketTests: XCTestCase {
 
     let actions = AsyncStream<WebSocketClient.Action>.streamWithContinuation()
 
-    store.dependencies.mainQueue = .immediate
+    store.dependencies.continuousClock = ImmediateClock()
     store.dependencies.webSocket.open = { _, _, _ in actions.stream }
     store.dependencies.webSocket.receive = { _ in try await Task.never() }
     store.dependencies.webSocket.sendPing = { _ in try await Task.never() }
