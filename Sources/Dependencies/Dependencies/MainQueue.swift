@@ -1,5 +1,3 @@
-// TODO: soft deprecate?
-
 #if canImport(Combine)
   import CombineSchedulers
   import Foundation
@@ -68,6 +66,23 @@
     /// }
     /// await task.cancel()
     /// ```
+    @available(
+      iOS, deprecated: 9999.0, message: "Use '\\.continuousClock' or '\\.suspendingClock' instead."
+    )
+    @available(
+      macOS, deprecated: 9999.0,
+      message: "Use '\\.continuousClock' or '\\.suspendingClock' instead."
+    )
+    @available(
+      tvOS,
+      deprecated: 9999.0,
+      message: "Use '\\.continuousClock' or '\\.suspendingClock' instead."
+    )
+    @available(
+      watchOS,
+      deprecated: 9999.0,
+      message: "Use '\\.continuousClock' or '\\.suspendingClock' instead."
+    )
     public var mainQueue: AnySchedulerOf<DispatchQueue> {
       get { self[MainQueueKey.self] }
       set { self[MainQueueKey.self] = newValue }

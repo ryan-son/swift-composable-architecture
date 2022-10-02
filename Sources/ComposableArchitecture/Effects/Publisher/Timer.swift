@@ -1,8 +1,5 @@
 import Combine
 import CombineSchedulers
-
-// TODO: soft deprecate
-
 extension Effect where Failure == Never {
   /// Returns an effect that repeatedly emits the current time of the given scheduler on the given
   /// interval.
@@ -91,6 +88,12 @@ extension Effect where Failure == Never {
   ///   - tolerance: The allowed timing variance when emitting events. Defaults to `nil`, which
   ///     allows any variance.
   ///   - options: Scheduler options passed to the timer. Defaults to `nil`.
+  @available(iOS, deprecated: 9999.0, message: "Use 'clock.timer' in an 'Effect.run', instead.")
+  @available(macOS, deprecated: 9999.0, message: "Use 'clock.timer' in an 'Effect.run', instead.")
+  @available(tvOS, deprecated: 9999.0, message: "Use 'clock.timer' in an 'Effect.run', instead.")
+  @available(
+    watchOS, deprecated: 9999.0, message: "Use 'clock.timer' in an 'Effect.run', instead."
+  )
   public static func timer<S: Scheduler>(
     id: AnyHashable,
     every interval: S.SchedulerTimeType.Stride,
@@ -119,11 +122,11 @@ extension Effect where Failure == Never {
   ///   - tolerance: The allowed timing variance when emitting events. Defaults to `nil`, which
   ///     allows any variance.
   ///   - options: Scheduler options passed to the timer. Defaults to `nil`.
-  @available(iOS, deprecated: 9999.0, message: "Use 'scheduler.timer' in 'Effect.run', instead.")
-  @available(macOS, deprecated: 9999.0, message: "Use 'scheduler.timer' in 'Effect.run', instead.")
-  @available(tvOS, deprecated: 9999.0, message: "Use 'scheduler.timer' in 'Effect.run', instead.")
+  @available(iOS, deprecated: 9999.0, message: "Use 'clock.timer' in an 'Effect.run', instead.")
+  @available(macOS, deprecated: 9999.0, message: "Use 'clock.timer' in an 'Effect.run', instead.")
+  @available(tvOS, deprecated: 9999.0, message: "Use 'clock.timer' in an 'Effect.run', instead.")
   @available(
-    watchOS, deprecated: 9999.0, message: "Use 'scheduler.timer' in 'Effect.run', instead."
+    watchOS, deprecated: 9999.0, message: "Use 'clock.timer' in an 'Effect.run', instead."
   )
   public static func timer<S: Scheduler>(
     id: Any.Type,
