@@ -1,7 +1,7 @@
 #if swift(>=5.7)
   import Clocks
 
-  @available(iOS 16.0, *)
+@available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
   extension DependencyValues {
     public var continuousClock: any Clock<Duration> {
       get { self[ContinuousClockKey.self] }
