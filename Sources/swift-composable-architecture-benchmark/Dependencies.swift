@@ -10,8 +10,9 @@ let dependenciesSuite = BenchmarkSuite(name: "Dependencies") { suite in
       .dependency(\.calendar, .autoupdatingCurrent)
       .dependency(\.date, .live)
       .dependency(\.locale, .autoupdatingCurrent)
-      .dependency(\.continuousClock, ImmediateClock())
-      .dependency(\.suspendingClock, ImmediateClock())
+  // TODO: what's going on here?
+//      .dependency(\.continuousClock, ImmediateClock())
+//      .dependency(\.suspendingClock, ImmediateClock())
       .dependency(\.timeZone, .autoupdatingCurrent)
       .dependency(\.uuid, .live)
 

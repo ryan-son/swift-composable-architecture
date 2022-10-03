@@ -7,7 +7,6 @@ import XCTestDynamicOverlay
 
 @MainActor
 final class VoiceMemosTests: XCTestCase {
-  let mainRunLoop = RunLoop.test
   let clock = TestClock()
 
   func testRecordMemoHappyPath() async throws {
@@ -122,7 +121,7 @@ final class VoiceMemosTests: XCTestCase {
     store.dependencies.uuid = .constant(UUID(uuidString: "DEADBEEF-DEAD-BEEF-DEAD-BEEFDEADBEEF")!)
 
     await store.send(.recordButtonTapped)
-    await self.mainRunLoop.advance(by: 0.5)
+    await self.clock.advance(by: .milliseconds(500))
     await store.receive(.recordPermissionResponse(true)) {
       $0.audioRecorderPermission = .allowed
       $0.recordingMemo = RecordingMemo.State(
@@ -161,23 +160,23 @@ final class VoiceMemosTests: XCTestCase {
     )
 
     store.dependencies.audioPlayer.play = { _ in
-      try await self.mainRunLoop.sleep(for: 1.25)
+      try await self.clock.sleep(for: .milliseconds(1_250))
       return true
     }
-    store.dependencies.mainRunLoop = self.mainRunLoop.eraseToAnyScheduler()
+    store.dependencies.continuousClock = self.clock
 
     let task = await store.send(.voiceMemo(id: url, action: .playButtonTapped)) {
       $0.voiceMemos[id: url]?.mode = .playing(progress: 0)
     }
-    await self.mainRunLoop.advance(by: 0.5)
+    await self.clock.advance(by: .milliseconds(500))
     await store.receive(.voiceMemo(id: url, action: .timerUpdated(0.5))) {
       $0.voiceMemos[id: url]?.mode = .playing(progress: 0.4)
     }
-    await self.mainRunLoop.advance(by: 0.5)
+    await self.clock.advance(by: .milliseconds(500))
     await store.receive(.voiceMemo(id: url, action: .timerUpdated(1))) {
       $0.voiceMemos[id: url]?.mode = .playing(progress: 0.8)
     }
-    await self.mainRunLoop.advance(by: 0.25)
+    await self.clock.advance(by: .milliseconds(250))
     await store.receive(.voiceMemo(id: url, action: .audioPlayerClient(.success(true)))) {
       $0.voiceMemos[id: url]?.mode = .notPlaying
     }
@@ -204,7 +203,7 @@ final class VoiceMemosTests: XCTestCase {
     struct SomeError: Error, Equatable {}
 
     store.dependencies.audioPlayer.play = { _ in throw SomeError() }
-    store.dependencies.mainRunLoop = self.mainRunLoop.eraseToAnyScheduler()
+    store.dependencies.continuousClock = self.clock
 
     let task = await store.send(.voiceMemo(id: url, action: .playButtonTapped)) {
       $0.voiceMemos[id: url]?.mode = .playing(progress: 0)
@@ -279,7 +278,7 @@ final class VoiceMemosTests: XCTestCase {
     )
 
     store.dependencies.audioPlayer.play = { _ in try await Task.never() }
-    store.dependencies.mainRunLoop = self.mainRunLoop.eraseToAnyScheduler()
+    store.dependencies.continuousClock = self.clock
 
     await store.send(.voiceMemo(id: url, action: .playButtonTapped)) {
       $0.voiceMemos[id: url]?.mode = .playing(progress: 0)
