@@ -1,5 +1,4 @@
 import Combine
-import CombineSchedulers
 import ComposableArchitecture
 import CustomDump
 import XCTest
@@ -22,7 +21,6 @@ final class ReducerTests: XCTestCase {
 
   @available(iOS 16, macOS 13, tvOS 16, watchOS 9, *)
   func testCombine_EffectsAreMerged() async {
-    typealias Scheduler = AnySchedulerOf<DispatchQueue>
     enum Action: Equatable {
       case increment
     }

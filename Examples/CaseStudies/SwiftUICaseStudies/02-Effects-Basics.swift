@@ -11,7 +11,7 @@ private let readMe = """
   uncertainty and complexity.
 
   Many things we do in our applications involve side effects, such as timers, database requests, \
-  file access, socket connections, and anytime a scheduler is involved (such as debouncing, \
+  file access, socket connections, and anytime a clock is involved (such as debouncing, \
   throttling and delaying), and they are typically difficult to test.
 
   This application has a simple side effect: tapping "Number fact" will trigger an API request to \
