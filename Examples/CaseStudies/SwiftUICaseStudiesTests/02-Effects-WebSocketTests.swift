@@ -55,6 +55,7 @@ final class WebSocketTests: XCTestCase {
     await store.send(.connectButtonTapped) {
       $0.connectivityState = .disconnected
     }
+    await store.finish()
   }
 
   func testWebSocketSendFailure() async {
@@ -99,6 +100,7 @@ final class WebSocketTests: XCTestCase {
     await store.send(.connectButtonTapped) {
       $0.connectivityState = .disconnected
     }
+    await store.finish()
   }
 
   func testWebSocketPings() async {
